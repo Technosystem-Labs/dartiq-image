@@ -1,0 +1,29 @@
+#!/bin/bash
+
+ARTIQ_REV="6.0"
+ARTIQ_REPO="https://github.com/m-labs/artiq"
+NIX_SCRIPTS_REV="a1d134ad"
+NIX_SCRIPTS_REPO="https://git.m-labs.hk/m-labs/nix-scripts.git"
+
+IMAGE_TAG="technosystem/dartiq:test$ARTIQ_REV"
+    
+BUILD_SCRIPT="echo \"Preparing requirements...\" &&\
+    nix-channel --add https://nixos.org/channels/nixpkgs-20.03-darwin nixpkgs &&\
+    nix-channel --add https://nixbld.m-labs.hk/channel/custom/artiq/full/artiq-full &&\
+    nix-channel --update &&\
+    mkdir -p ~/.config/nix/ &&\
+    echo substituters = http://cache.nixos.org.rnd.ts http://nixbld.m-labs.hk.rnd.ts https://cache.nixos.org https://nixbld.m-labs.hk >> ~/.config/nix/nix.conf &&\
+    echo trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nixbld.m-labs.hk-1:5aSRVA5b320xbNvu30tqxVPXpld73bhtOeH6uAjRyHc= >> ~/.config/nix/nix.conf &&\
+    nix-env -iA nixpkgs.git nixpkgs.skopeo &&\
+    echo \"Cloning repositories...\" &&\
+    git clone $ARTIQ_REPO /tmp/artiq &&\
+    (cd /tmp/artiq; git checkout $ARTIQ_REV; git submodule update --init --recursive) &&\
+    git clone $NIX_SCRIPTS_REPO /tmp/nix-scripts &&\
+    (cd /tmp/nix-scripts; git checkout $NIX_SCRIPTS_REV; git submodule update --init --recursive; git apply /src/nix-scripts.patch) &&\
+    echo \"Starting building image $IMAGE_TAG...\" &&\
+    nix-build --argstr imageTag $IMAGE_TAG -I artiqSrc=/tmp/artiq dartiq.nix &&\
+    skopeo --insecure-policy copy docker-archive:$(readlink ./result) docker-daemon:$IMAGE_TAG &&\
+    rm ./result"
+
+docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/src --workdir /src nixos/nix /bin/sh -c "$BUILD_SCRIPT"
+

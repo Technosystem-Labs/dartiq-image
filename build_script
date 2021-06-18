@@ -1,29 +1,59 @@
 #!/bin/bash
 
-ARTIQ_REV="6.0"
-ARTIQ_REPO="https://github.com/m-labs/artiq"
-NIX_SCRIPTS_REV="a1d134ad"
-NIX_SCRIPTS_REPO="https://git.m-labs.hk/m-labs/nix-scripts.git"
+set -ue
 
-IMAGE_TAG="technosystem/dartiq:test$ARTIQ_REV"
-    
-BUILD_SCRIPT="echo \"Preparing requirements...\" &&\
-    nix-channel --add https://nixos.org/channels/nixpkgs-20.03-darwin nixpkgs &&\
+BINARY_CACHE="https://cache.nixos.org https://nixbld.m-labs.hk"
+if [ -v EXTRA_BINARY_CACHE ]; then
+    BINARY_CACHE="$EXTRA_BINARY_CACHE $BINARY_CACHE"
+fi
+
+CACHE_SIGNATURES="cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nixbld.m-labs.hk-1:5aSRVA5b320xbNvu30tqxVPXpld73bhtOeH6uAjRyHc="
+if [ -v EXTRA_CACHE_SIGNATURES ]; then
+    CACHE_SIGNATURES="$EXTRA_CACHE_SIGNATURES $CACHE_SIGNATURES"
+fi
+
+TARGET_FILE="dartiq.nix"
+if [ -v TARGET ]; then
+    TARGET_FILE="$TARGET.nix"
+fi
+
+echo "ARTIQ_REV=$ARTIQ_REV"
+echo "ARTIQ_REPO=$ARTIQ_REPO"
+echo "NIX_SCRIPTS_REV=$NIX_SCRIPTS_REV"
+echo "NIX_SCRIPTS_REPO=$NIX_SCRIPTS_REPO"
+echo "BINARY_CACHE=$BINARY_CACHE"
+echo "CACHE_SIGNATURES=$CACHE_SIGNATURES"
+echo "NIX_PACKAGES=$NIX_PACKAGES"
+echo "IMAGE_TAG=$IMAGE_TAG"
+echo "TARGET_FILE=$TARGET_FILE"
+echo ""
+
+echo "Data OK? (Ctrl-C to abort)"
+read
+
+# If there are remainings after unsuccessful run, remove them
+if [ -a ./result ]; then
+    rm ./result
+fi
+
+BUILD_SCRIPT="echo Preparing requirements... &&\
     nix-channel --add https://nixbld.m-labs.hk/channel/custom/artiq/full/artiq-full &&\
+    nix-channel --remove nixpkgs &&\
+    nix-channel --add $NIX_PACKAGES nixpkgs &&\
     nix-channel --update &&\
     mkdir -p ~/.config/nix/ &&\
-    echo substituters = http://cache.nixos.org.rnd.ts http://nixbld.m-labs.hk.rnd.ts https://cache.nixos.org https://nixbld.m-labs.hk >> ~/.config/nix/nix.conf &&\
-    echo trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nixbld.m-labs.hk-1:5aSRVA5b320xbNvu30tqxVPXpld73bhtOeH6uAjRyHc= >> ~/.config/nix/nix.conf &&\
+    echo substituters = $BINARY_CACHE >> ~/.config/nix/nix.conf &&\
+    echo trusted-public-keys = $CACHE_SIGNATURES >> ~/.config/nix/nix.conf &&\
     nix-env -iA nixpkgs.git nixpkgs.skopeo &&\
-    echo \"Cloning repositories...\" &&\
+    echo Cloning repositories... &&\
     git clone $ARTIQ_REPO /tmp/artiq &&\
     (cd /tmp/artiq; git checkout $ARTIQ_REV; git submodule update --init --recursive) &&\
     git clone $NIX_SCRIPTS_REPO /tmp/nix-scripts &&\
     (cd /tmp/nix-scripts; git checkout $NIX_SCRIPTS_REV; git submodule update --init --recursive; git apply /src/nix-scripts.patch) &&\
-    echo \"Starting building image $IMAGE_TAG...\" &&\
-    nix-build --argstr imageTag $IMAGE_TAG -I artiqSrc=/tmp/artiq dartiq.nix &&\
-    skopeo --insecure-policy copy docker-archive:$(readlink ./result) docker-daemon:$IMAGE_TAG &&\
+    echo Starting building image $IMAGE_TAG... &&\
+    nix-build --argstr imageTag $IMAGE_TAG -I artiqSrc=/tmp/artiq $TARGET_FILE &&\
+    echo Storing built image in host Docker daemon ... &&\
+    skopeo --insecure-policy copy docker-archive:\$(readlink ./result) docker-daemon:$IMAGE_TAG &&\
     rm ./result"
 
 docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/src --workdir /src nixos/nix /bin/sh -c "$BUILD_SCRIPT"
-

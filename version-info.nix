@@ -8,10 +8,10 @@ stdenv.mkDerivation {
       DARTIQ_IMAGE_REPO_REV=`${git}/bin/git describe --always`
 
       ARTIQ_VERSION=${artiqVersion}
-      ARTIQ_REPO=`cd artiq; ${git}/bin/git remote get-url origin`
+      ARTIQ_REPO=`cd /tmp/artiq; ${git}/bin/git remote get-url origin`
 
-      NIX_SCRIPTS_REPO=`cd nix-scripts; ${git}/bin/git remote get-url origin`
-      NIX_SCRIPTS_REPO_REV=`cd nix-scripts; ${git}/bin/git describe --always`
+      NIX_SCRIPTS_REPO=`cd /tmp/nix-scripts; ${git}/bin/git remote get-url origin`
+      NIX_SCRIPTS_REPO_REV=`cd /tmp/nix-scripts; ${git}/bin/git describe --always`
     '';
     installPhase = ''
     mkdir -p "$out/bin"

@@ -14,7 +14,14 @@ This image is designed to be used with
 Prebuilt image can be pulled from Docker Hub:
 
 ```bash
-docker pull technosystem/dartiq:latest
+# Full-featured ~5GB, based on repo head
+docker pull technosystem/dartiq:latest       
+# Full-featured ~5GB, stable 6.0
+docker pull technosystem/dartiq:6.0
+# Minimal version ~2.5GB, based on repo head
+docker pull technosystem/dartiq:latest_mini
+# Minimal version ~2.5GB, stable 6.0
+docker pull technosystem/dartiq:6.0_mini 
 ```
 
 ## Building image

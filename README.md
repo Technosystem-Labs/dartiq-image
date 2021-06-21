@@ -29,7 +29,7 @@ docker pull technosystem/dartiq:6.0_mini
 You can also build an image on your own using `build_script`. This will use
 `nixos/nix` image to build your Dockerized ARTIQ environment. Please note 
 that the script runs container with your host system Docker daemon socket 
-mounted and will copy outcome image directly to your local Docker image store.
+mounted and will copy the outcome image directly to your local Docker image store.
 
 Build process is configured with the following environment variables:
 * `ARTIQ_REV`: revision of ARTIQ repository URL, currently defaults to `6.0`.
@@ -48,7 +48,7 @@ Build process is configured with the following environment variables:
 * `TARGET`: variant to build, either `dartiq` (~5.3GB) or `dartiq_mini` 
   (~2.2GB), defaults to `dartiq`.
 
-Beware that you can't choose `NIX_PACKAGES` and Nix Script revision arbitrarly,
+Beware that you can't choose `NIX_PACKAGES` and Nix Script revision arbitrarily,
 so until you know what you're doing, it's better to refer to the example
 configurations:
 * `artiq6.env`: for stable ARTIQ 6.0 (full-featured)

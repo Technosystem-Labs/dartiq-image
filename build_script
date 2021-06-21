@@ -54,6 +54,7 @@ BUILD_SCRIPT="echo Preparing requirements... &&\
     nix-build --argstr imageTag $IMAGE_TAG -I artiqSrc=/tmp/artiq $TARGET_FILE &&\
     echo Storing built image in host Docker daemon ... &&\
     skopeo --insecure-policy copy docker-archive:\$(readlink ./result) docker-daemon:$IMAGE_TAG &&\
-    rm ./result"
+    rm ./result &&\
+    echo Finished successfully."
 
 docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/src --workdir /src nixos/nix /bin/sh -c "$BUILD_SCRIPT"

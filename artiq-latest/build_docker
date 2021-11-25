@@ -1,0 +1,17 @@
+#!/bin/bash
+
+TMP_DIR=/tmp/dartiq-image-latest
+PATCH_PATH="$(pwd)/flake.patch"
+
+# Fresh start
+rm -rf $TMP_DIR
+mkdir $TMP_DIR
+
+git clone https://github.com/m-labs/artiq.git $TMP_DIR
+cd $TMP_DIR
+ARTIQ_REV=`git rev-parse --short HEAD`
+git apply --whitespace=nowarn $PATCH_PATH
+
+sed -i 's/!!ARTIQ_REV!!/123/g' ./flake.nix
+
+nix build .#dockerLatest

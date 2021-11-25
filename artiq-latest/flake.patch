@@ -1,0 +1,116 @@
+diff --git a/flake.nix b/flake.nix
+index 86716653..8d6929fd 100644
+--- a/flake.nix
++++ b/flake.nix
+@@ -5,11 +5,12 @@
+   inputs.mozilla-overlay = { url = github:mozilla/nixpkgs-mozilla; flake = false; };
+   inputs.src-sipyco = { url = github:m-labs/sipyco; flake = false; };
+   inputs.src-pythonparser = { url = github:m-labs/pythonparser; flake = false; };
++  inputs.src-artiq-netboot = { type = "git"; url = "https://git.m-labs.hk/m-labs/artiq-netboot.git"; flake = false; };
+ 
+   inputs.src-migen = { url = github:m-labs/migen; flake = false; };
+   inputs.src-misoc = { type = "git"; url = "https://github.com/m-labs/misoc.git"; submodules = true; flake = false; };
+-
+-  outputs = { self, nixpkgs, mozilla-overlay, src-sipyco, src-pythonparser, src-migen, src-misoc }:
++  
++  outputs = { self, nixpkgs, mozilla-overlay, src-sipyco, src-artiq-netboot, src-pythonparser, src-migen, src-misoc }:
+     let
+       pkgs = import nixpkgs { system = "x86_64-linux"; overlays = [ (import mozilla-overlay) ]; };
+       rustManifest = pkgs.fetchurl {
+@@ -52,6 +53,11 @@
+         propagatedBuildInputs = with pkgs.python3Packages; [ pybase64 numpy ];
+       };
+ 
++      artiq-netboot = pkgs.python3Packages.buildPythonPackage {
++        name = "artiq-netboot";
++        src = src-artiq-netboot;
++      };
++
+       pythonparser = pkgs.python3Packages.buildPythonPackage {
+         name = "pythonparser";
+         src = src-pythonparser;
+@@ -134,7 +140,7 @@
+ 
+       artiq = pkgs.python3Packages.buildPythonPackage rec {
+         pname = "artiq";
+-        version = "7.0-dev";
++        version = "7.0-!!ARTIQ_REV!!";
+         src = self;
+ 
+         preBuild = "export VERSIONEER_OVERRIDE=${version}";
+@@ -240,10 +246,21 @@
+       vivado = pkgs.buildFHSUserEnv {
+         name = "vivado";
+         targetPkgs = vivadoDeps;
+-        profile = "source /opt/Xilinx/Vivado/2021.1/settings64.sh";
++        profile = "source /opt/Xilinx/Vivado/settings64.sh";
+         runScript = "vivado";
+       };
+ 
++      artiq-version = pkgs.stdenv.mkDerivation {
++        name = "artiq-version";
++        src = self;
++        installPhase = ''
++          mkdir -p $out/bin;
++          echo "#!/bin/bash" >> $out/bin/version-info
++          echo 'echo "ARTIQ rev: !!ARTIQ_REV!!"' >> $out/bin/version-info
++          chmod +x $out/bin/version-info
++          '';
++      };
++
+       makeArtiqBoardPackage = { target, variant, buildCommand ? "python -m artiq.gateware.targets.${target} -V ${variant}" }:
+         pkgs.python3Packages.toPythonModule (pkgs.stdenv.mkDerivation {
+           name = "artiq-board-${target}-${variant}";
+@@ -387,6 +404,52 @@
+         TARGET_AR="llvm-ar";
+       };
+ 
++      dockerLatest = pkgs.dockerTools.buildImage {
++          name = "technosystem/dartiq";
++          contents = [
++              pkgs.bashInteractive
++              pkgs.coreutils
++              pkgs.git
++              pkgs.cacert
++              pkgs.gnumake
++              pkgs.stdenv.cc
++              # Urukul programming support
++              pkgs.xc3sprog
++              pkgs.fxload
++              pkgs.yosys
++              pkgs.nextpnr
++              pkgs.icestorm
++              # Additional tools
++              artiq-netboot
++              artiq-version
++
++              (pkgs.python3.withPackages(ps: with packages.x86_64-linux; [ migen misoc jesd204b artiq ps.paramiko ps.jsonschema microscope ]))
++              rustPlatform.rust.rustc
++              rustPlatform.rust.cargo
++              cargo-xbuild
++              pkgs.llvmPackages_11.clang-unwrapped
++              pkgs.llvm_11
++              pkgs.lld_11
++              # use the vivado-env command to enter a FHS shell that lets you run the Vivado installer
++              packages.x86_64-linux.vivadoEnv
++              packages.x86_64-linux.vivado
++              packages.x86_64-linux.openocd-bscanspi
++          ];
++          tag = "latest";
++          created = "now";
++          config = {
++              Env = [
++                  "TARGET_AR=llvm-ar"
++                  "PS1=\\e[32;4m[DARTIQ]\\e[0m \\e[34m\\w\\e[0m \$ "
++                  "HOME=/home"
++              ];
++              Entrypoint = [
++                  "${pkgs.bashInteractive}/bin/bash"
++              ];
++              WorkingDir = "/workspace";
++          };
++        };
++
+       hydraJobs = {
+         inherit (packages.x86_64-linux) artiq artiq-board-kc705-nist_clock openocd-bscanspi;
+         kc705-hitl = pkgs.stdenv.mkDerivation {

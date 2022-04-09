@@ -4,7 +4,8 @@
 This repository provides Docker image with ARTIQ. It uses Nix package manager
 and its `dockerTools.buildImage` package to build the image with all dependencies from scratch.
 Scripts that define ARTIQ environment are provided by M-Labs in 
-[nix-scripts](https://git.m-labs.hk/M-Labs/nix-scripts) repository.
+[nix-scripts](https://git.m-labs.hk/M-Labs/nix-scripts) repository (legacy version)
+or with [Nix Flake](https://github.com/m-labs/artiq/blob/master/flake.nix) defined in ARTIQ repository.
 
 This image is designed to be used with 
 [DARTIQ script](https://github.com/Technosystem-Labs/dartiq).
@@ -18,15 +19,37 @@ Prebuilt image can be pulled from Docker Hub:
 docker pull technosystem/dartiq:latest       
 # Full-featured ~5GB, stable 6.0
 docker pull technosystem/dartiq:6.0
-# Minimal version ~2.5GB, based on repo head
-docker pull technosystem/dartiq:latest_mini
 # Minimal version ~2.5GB, stable 6.0
 docker pull technosystem/dartiq:6.0_mini 
 ```
 
 Alternatively you can build your own image locally. The process is described in the following section.
 
-## Building image
+## Building image - Nix Flake version
+
+Building image with Nix Flake requires Nix Flakes enabled. Please refere to Nix
+manual.
+
+Having Flakes enabled, enter `artiq-nixflake` directory build image with command:
+
+```bash
+nix build .#dockerLatest
+```
+
+Built image will be available under `./result` and can be loaded to Docker daemon with:
+
+```bash
+docker load -i ./result
+```
+
+Please note that the image will be tagged as `technosystem/dartiq:<ARTIQ commit hash>`.
+For seamless operation with DARTIQ script you may wan to tag it with `technosystem/dartiq:latest`:
+
+```bash
+docker tag technosystem/dartiq:<ARTIQ commit hash> technosystem/dartiq:latest
+```
+
+## Building image - legacy
 
 You can also build an image on your own using `build_script`. This will use
 `nixos/nix` Docker image to build your Dockerized ARTIQ environment. Please note
@@ -61,6 +84,7 @@ Additionally, you can set the following variables:
 * `EXTRA_CACHE_SIGNATURES`: signatures for extra binary caches.
 
 ### Example usage
+
 For example, if you want to build `dartiq:6.0` stable image, run:
 
 ```bash

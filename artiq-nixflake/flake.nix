@@ -2,7 +2,7 @@
   description = "Dockerized ARTIQ";
 
   inputs = {
-    artiq.url = "github:m-labs/artiq?rev=f89275b02ae5bb7b6a3d2c9e714cefd2f93e460d"; 
+    artiq.url = "github:m-labs/artiq?ref=release-7"; 
     mozilla-overlay = { url = github:mozilla/nixpkgs-mozilla; flake = false; };
     src-artiq-netboot = { type = "git"; url = "https://git.m-labs.hk/m-labs/artiq-netboot.git"; flake = false; };
   };
